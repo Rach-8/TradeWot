@@ -14,8 +14,8 @@ df_raw["Date"] = pd.to_datetime(df_raw["Date"])
 df = df_raw.merge(df_feat, on="Date", how="inner")
 df = df.sort_values("Date").reset_index(drop=True)
 
-start_date = '2021-11-01'
-end_date = '2023-12-01'
+start_date = '2021-10-01'
+end_date = '2023-11-30'
 df_subset = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)].copy()
 df_subset.set_index('Date', inplace=True) 
 
