@@ -1,9 +1,7 @@
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from backtesting import Backtest, Strategy
-from backtesting.lib import crossover
-import talib
+from backtesting import Backtest
+from StrategyClasses.Sideways import Sideways_ADX_RSI_ATR
+from StrategyClasses.Trending import Trending_BB_SMA
 
 
 
@@ -16,32 +14,18 @@ df_raw["Date"] = pd.to_datetime(df_raw["Date"])
 df = df_raw.merge(df_feat, on="Date", how="inner")
 df = df.sort_values("Date").reset_index(drop=True)
 
+start_date = '2021-11-01'
+end_date = '2023-12-01'
+df_subset = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)].copy()
+df_subset.set_index('Date', inplace=True) 
+
+bh_return = df_subset['Close'].iloc[-1] / df_subset['Close'].iloc[0] - 1
 
 
 
-class BBRSI(Strategy):
-    def init(self):
-        close = self.data.Close
-        self.rsi = self.I(talib.RSI, close, 14)
-        
-        upper, middle, lower = talib.BBANDS(close, timeperiod=30)
-        self.upper = self.I(lambda: upper)
-        self.lower = self.I(lambda: lower)
 
-    def next(self):
-        price = self.data.Close[-1]
-
-        # Long
-        if price <= self.lower[-1] :
-            self.position.close()
-            self.buy()
-
-        # Short
-        elif price >= self.upper[-1] :
-            self.position.close()
-            self.sell()
-
-bt = Backtest(df, BBRSI, commission=0.0002, cash=10_000,)
+bt = Backtest(df_subset, Sideways_ADX_RSI_ATR, commission=0.0002, cash=10_000,finalize_trades=True)
 results = bt.run()
+print("Manual Buy & Hold Return:", bh_return)
 print(results)
 bt.plot()
