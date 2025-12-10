@@ -1,6 +1,8 @@
 Tools Used 
 Libraries :hmmLearn, Backtesting, TALib,  numpy, matplotlib, pickle, Pandas
-Data : yFinance SPY Data (1993-2025)
+<br>
+Data : yFinance SPY Data (1993-2025) 
+<br>
 Articles : [Applications of HHMs in Trading](https://www.quantstart.com/articles/market-regime-detection-using-hidden-markov-models-in-qstrader/)
 
 
