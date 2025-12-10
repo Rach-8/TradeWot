@@ -1,3 +1,8 @@
+Tools Used 
+Libraries :hmmLearn, Backtesting, TALib,  numpy, matplotlib, pickle, Pandas
+Data : yFinance SPY Data (1993-2025)
+Articles : [Applications of HHMs in Trading](https://www.quantstart.com/articles/market-regime-detection-using-hidden-markov-models-in-qstrader/)
+
 
 I was looking at the different large market indexes, when I noticed that market was either in sideways short choppy pattern or in a medium to long term trending pattern.
 
