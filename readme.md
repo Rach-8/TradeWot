@@ -17,7 +17,7 @@ Buy & Hold Return [%]                 2500
 
 But, we are incurring heavy losses in the choppy sideways parts of the market, as seen in red.
 
-![sideways strat chart](Img/sd.png)
+![sideways strat chart](Img/sw.png)
 
 Sideways Strategy applied to one of the recent most unpredictable sideways markets.
 Return [%]                            5.08816
