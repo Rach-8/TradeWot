@@ -9,7 +9,7 @@ Sideways Strategy : Uses ATR multipliers, ADX theresholds, RSI bands. Plays safe
 
                     
 
-img
+![trending strat chart](Img/td.png)
 
 Just Trending Strategy from 1993 to 2025, 
 Return [%]                            3200
@@ -17,7 +17,7 @@ Buy & Hold Return [%]                 2500
 
 But, we are incurring heavy losses in the choppy sideways parts of the market, as seen in red.
 
-img
+![sideways strat chart](Img/sd.png)
 
 Sideways Strategy applied to one of the recent most unpredictable sideways markets.
 Return [%]                            5.08816
@@ -36,7 +36,7 @@ They are called HMMs - Hidden Markov Models.
 They by design assume that latent variables and states exist which are not observable directly. Thus when trained on a large dataset of market returns, as those returns were indirectly affected by the regime changes, fitting an HHM to the market return data allows for regime predictions.
 
 
-img
+![ML model run](Img/ml.png)
 
 The model trained on 1993 to 2015 data predicting using untested data.
 
