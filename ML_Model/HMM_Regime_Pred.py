@@ -16,11 +16,15 @@ def plot_hidden_states(hmm_model, df, returns_col="Adj Close"):
     hidden_states = hmm_model.predict(np.column_stack([df["Returns"]]))
     fig, axs = plt.subplots(hmm_model.n_components, sharex=True, sharey=True)
     colours = cm.rainbow(np.linspace(0, 1, hmm_model.n_components))
-
+    state_names = {
+    0: "Trending & Stable",
+    1: "Sideways & Choppy"
+}
     for i, (ax, colour) in enumerate(zip(axs, colours)):
         mask = hidden_states == i
         ax.plot_date(df.index[mask], df[returns_col][mask], ".", linestyle="none", c=colour)
-        ax.set_title(f"Hidden State #{i}")
+        ax.set_title(f"{state_names.get(i, 'Unknown')}")
+
         ax.xaxis.set_major_locator(YearLocator())
         ax.xaxis.set_minor_locator(MonthLocator())
         ax.grid(True)

@@ -9,7 +9,7 @@ class Sideways_ADX_RSI_ATR(Strategy):
     rsi_low = 45
     rsi_high = 55
     adx_period = 14
-    adx_threshold = 15
+    adx_threshold = 20
 
     def init(self):
         close = self.data.Close

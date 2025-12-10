@@ -3,9 +3,9 @@ import talib
 
 class Trending_BB_SMA(Strategy):
 
-    rsi_period = 10
-    bb_period = 30
-    sma_period = 192
+    rsi_period = 14
+    bb_period = 20
+    sma_period = 200
 
     def init(self):
         close = self.data.Close
