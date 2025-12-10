@@ -14,8 +14,9 @@ Sideways Strategy : Uses ATR multipliers, ADX theresholds, RSI bands. Plays safe
 Just Trending Strategy from 1993 to 2025, 
 Return [%]                            3200
 Buy & Hold Return [%]                 2500
-
 But, we are incurring heavy losses in the choppy sideways parts of the market, as seen in red.
+
+
 
 ![sideways strat chart](Img/sw.png)
 
@@ -40,4 +41,5 @@ They by design assume that latent variables and states exist which are not obser
 
 The model trained on 1993 to 2015 data predicting using untested data.
 
-Currently I am working on integration my strategies with its predictions, then next step is the backtesting.
+
+NOW : Currently I am working on integration my strategies with its predictions, then next step is the backtesting.
