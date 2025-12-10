@@ -2,7 +2,7 @@ from backtesting import Strategy
 import talib
 
 class Sideways_ADX_RSI_ATR(Strategy):
-    # Default parameters
+
     atr_period = 14
     atr_mult = 2
     rsi_period = 14
@@ -16,7 +16,7 @@ class Sideways_ADX_RSI_ATR(Strategy):
         high = self.data.High
         low = self.data.Low
 
-        # Indicators
+
         self.rsi = self.I(talib.RSI, close, timeperiod=self.rsi_period)
         self.atr = self.I(talib.ATR, high, low, close, timeperiod=self.atr_period)
         self.adx = self.I(talib.ADX, high, low, close, timeperiod=self.adx_period)
@@ -24,7 +24,7 @@ class Sideways_ADX_RSI_ATR(Strategy):
     def next(self):
         price = self.data.Close[-1]
 
-        # --- Exit positions ---
+    
         for trade in self.trades:
             if trade.is_long:
                 stop_price = trade.entry_price - self.atr[-1] * self.atr_mult
@@ -35,11 +35,11 @@ class Sideways_ADX_RSI_ATR(Strategy):
                 if price >= stop_price:
                     trade.close()
 
-        # --- Skip if trending ---
+
         if self.adx[-1] >= self.adx_threshold:
             return
 
-        # --- Entry rules ---
+    
         if self.rsi[-1] < self.rsi_low:
             if not any(trade.is_long for trade in self.trades):
                 self.buy()

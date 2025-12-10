@@ -2,7 +2,7 @@ from backtesting import Strategy
 import talib
 
 class Trending_BB_SMA(Strategy):
-    # Default parameters
+
     rsi_period = 10
     bb_period = 30
     sma_period = 192
@@ -10,7 +10,6 @@ class Trending_BB_SMA(Strategy):
     def init(self):
         close = self.data.Close
 
-        # Indicators
         self.rsi = self.I(talib.RSI, close, timeperiod=self.rsi_period)
         upper, middle, lower = talib.BBANDS(close, timeperiod=self.bb_period)
         self.upper = self.I(lambda: upper)
