@@ -1,0 +1,70 @@
+
+
+def plot_results(results_df, ticker):
+    """Plots cumulative returns."""
+
+    if results_df.empty:
+        print(f"No results to plot for {ticker}.")
+        return
+
+    results_df["bh_cum_rets"] = (1 + results_df["returns"]).cumprod()
+
+    results_df["strategy_returns"] = results_df["returns"] * results_df["signal"]
+    results_df.dropna(subset=["strategy_returns"], inplace=True)
+
+    if results_df.empty or results_df["strategy_returns"].isnull().all():
+        print(f"No valid strategy returns to plot for {ticker} after processing.")
+        return
+
+    results_df["strategy_cum_rets"] = (1 + results_df["strategy_returns"]).cumprod()
+
+    plt.figure(figsize=(15, 7))
+    plt.plot(results_df["bh_cum_rets"], label="Buy-and-Hold")
+    plt.plot(results_df["strategy_cum_rets"], label="HMM-RF Strategy")
+    plt.title(f"{ticker} Strategy Cumulative Returns", fontsize=16)
+    plt.xlabel("Date", fontsize=15)
+    plt.ylabel("Cumulative Returns", fontsize=15)
+    plt.tick_params(axis="both", labelsize=15)
+    plt.legend(loc="best")
+    plt.grid(True)
+    plt.show()
+
+
+def compute_perf_stats(results_to_plot):
+
+    strategy_stats = pf_ts.perf_stats(results_to_plot["strategy_returns"])
+    bh_stats = pf_ts.perf_stats(results_to_plot["bh_cum_rets"].pct_change().fillna(0))
+
+    perf_table = pd.concat([bh_stats, strategy_stats], axis=1)
+    perf_table.columns = ["Buy & Hold", "Strategy"]
+
+    desired_metrics = [
+        "Annual return",
+        "Cumulative returns",
+        "Annual volatility",
+        "Sharpe ratio",
+        "Calmar ratio",
+        "Max drawdown",
+        "Sortino ratio",
+    ]
+
+    final_table = perf_table.loc[desired_metrics]
+
+    for index in final_table.index:
+        if index in [
+            "Annual return",
+            "Cumulative returns",
+            "Annual volatility",
+            "Max drawdown",
+        ]:
+            for column in final_table.columns:
+                final_table.loc[index, column] = (
+                    f"{round(final_table.loc[index,column]*100,2):.2f}%"
+                )
+        else:
+            for column in final_table.columns:
+                final_table.loc[index, column] = (
+                    f"{round(final_table.loc[index,column],2):.2f}"
+                )
+
+    print(final_table)
