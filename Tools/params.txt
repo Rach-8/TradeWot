@@ -1,0 +1,23 @@
+ {'hmm_cov': 'diag', 'hmm_n_iter': 591, 'hmm_tol': 0.00025461513333633457, 'rf_trees': 141, 'rf_depth': 2, 'hmm_years': 2.7459940445259763, 'rf_months': 7, 'hmm_freq': 2, 'rf_freq': 1, 'thresh': 0.04510417526347428, 'roll': 6}
+
+     for i in range(len(test_rets)):
+        # Predict today's state based on all history so far
+        last_state = hmm_model.predict(history)[-1]
+
+        # Next-day regime probabilities from transition matrix
+        next_day_probs = hmm_model.transmat_[last_state]
+
+        # Pick the regime with highest probability for next day
+        next_day_regime = np.argmax(next_day_probs)
+        next_day_regimes.append(next_day_regime)
+
+        # Add today's actual return to history to simulate walk-forward
+        history = np.vstack([history, test_rets[i]])
+
+    next_day_regimes = np.array(next_day_regimes)
+
+    # Plot regimes over the test period
+    plot_in_sample_hidden_states(hmm_model, test_df, next_day_regimes)
+
+    # Print training score for reference
+    print("Training Score:", hmm_model.score(test_rets))
