@@ -1,7 +1,7 @@
 # monte_carlo_backtest.py
 import pandas as pd
 import numpy as np
-from run_backtest import run_backtest_STABLE  
+from run_backtest import run_backtest_STABLE
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -34,25 +34,35 @@ def monte_carlo_robustness_test(run_backtest_func, n_simulations=10, **kwargs):
         print(f"\n--- Monte Carlo Run {sim+1}/{n_simulations} ---")
         results_df = run_backtest_func(**kwargs)
 
-        bt_results = results_df[results_df.index >= pd.to_datetime(kwargs['backtest_signal_start_date_str'])]
-        portfolio_returns = bt_results['signal'].fillna(0) * bt_results['returns']
+        bt_results = results_df[
+            results_df.index >= pd.to_datetime(kwargs["backtest_signal_start_date_str"])
+        ]
+        portfolio_returns = bt_results["signal"].fillna(0) * bt_results["returns"]
 
         cum_return = (1 + portfolio_returns).prod() - 1
         annual_vol = portfolio_returns.std() * np.sqrt(252)
-        sharpe = portfolio_returns.mean() / portfolio_returns.std() * np.sqrt(252) if portfolio_returns.std() > 0 else 0
+        sharpe = (
+            portfolio_returns.mean() / portfolio_returns.std() * np.sqrt(252)
+            if portfolio_returns.std() > 0
+            else 0
+        )
         running_max = (1 + portfolio_returns).cumprod().cummax()
         drawdown = (1 + portfolio_returns).cumprod() / running_max - 1
         max_dd = drawdown.min()
 
-        print(f"Cumulative Return: {cum_return:.4f}, Sharpe: {sharpe:.4f}, Max Drawdown: {max_dd:.4f}")
+        print(
+            f"Cumulative Return: {cum_return:.4f}, Sharpe: {sharpe:.4f}, Max Drawdown: {max_dd:.4f}"
+        )
 
-        results_list.append({
-            "Simulation": sim + 1,
-            "CumulativeReturn": cum_return,
-            "AnnualVol": annual_vol,
-            "Sharpe": sharpe,
-            "MaxDrawdown": max_dd
-        })
+        results_list.append(
+            {
+                "Simulation": sim + 1,
+                "CumulativeReturn": cum_return,
+                "AnnualVol": annual_vol,
+                "Sharpe": sharpe,
+                "MaxDrawdown": max_dd,
+            }
+        )
 
     summary_df = pd.DataFrame(results_list)
     print("\n--- Monte Carlo Summary ---")
@@ -60,9 +70,12 @@ def monte_carlo_robustness_test(run_backtest_func, n_simulations=10, **kwargs):
 
     # --- Robustness / overfitting metrics ---
     robustness_metrics = {
-        "CumulativeReturn_Worst_to_Mean": summary_df["CumulativeReturn"].min() / summary_df["CumulativeReturn"].mean(),
-        "Sharpe_Worst_to_Mean": summary_df["Sharpe"].min() / summary_df["Sharpe"].mean(),
-        "MaxDrawdown_Worst_to_Mean": summary_df["MaxDrawdown"].min() / summary_df["MaxDrawdown"].mean()
+        "CumulativeReturn_Worst_to_Mean": summary_df["CumulativeReturn"].min()
+        / summary_df["CumulativeReturn"].mean(),
+        "Sharpe_Worst_to_Mean": summary_df["Sharpe"].min()
+        / summary_df["Sharpe"].mean(),
+        "MaxDrawdown_Worst_to_Mean": summary_df["MaxDrawdown"].min()
+        / summary_df["MaxDrawdown"].mean(),
     }
 
     print("\n--- Robustness Metrics ---")
@@ -73,7 +86,10 @@ def monte_carlo_robustness_test(run_backtest_func, n_simulations=10, **kwargs):
 
 
 if __name__ == "__main__":
-    from run_backtest import get_data, engineer_features_SPEC  # <-- replace with your actual module
+    from run_backtest import (
+        get_data,
+        engineer_features_SPEC,
+    )  # <-- replace with your actual module
 
     TICKER = "SPY"
     TICKER2 = "GLD"
@@ -95,7 +111,7 @@ if __name__ == "__main__":
             "n_components": 2,
             "covariance_type": "full",
             "n_iter": 591,
-            "tol": 0.00025461513333633457
+            "tol": 0.00025461513333633457,
         },
         "rf_params": {
             "n_estimators": 300,
@@ -103,7 +119,7 @@ if __name__ == "__main__":
             "min_samples_leaf": 30,
             "max_features": "sqrt",
             "bootstrap": True,
-            "n_jobs": -1
+            "n_jobs": -1,
         },
     }
 
@@ -120,5 +136,5 @@ if __name__ == "__main__":
         hmm_train_nth_week=4,
         rf_train_nth_week=2,
         thresh_prob=0.75,
-        params=params_opt
+        params=params_opt,
     )

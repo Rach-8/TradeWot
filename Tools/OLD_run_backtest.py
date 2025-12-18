@@ -371,7 +371,7 @@ def run_backtest_STABLE(
 
     for t in range(start_idx, len(data_df)):
 
-    # ----- Train HMM every X days -----
+        # ----- Train HMM every X days -----
         if (t - start_idx) % X == 0:
             hmm_start = max(0, t - hmm_window_days)
             hmm_train = data_df.iloc[hmm_start:t].copy()
@@ -398,7 +398,9 @@ def run_backtest_STABLE(
             rf_train["norm_returns"] = scaler_rf.fit_transform(rf_train[["returns"]])
 
             # Make sure we have y_signal and features
-            rf_train = rf_train.dropna(subset=["norm_returns"] + feature_list + ["y_signal"])
+            rf_train = rf_train.dropna(
+                subset=["norm_returns"] + feature_list + ["y_signal"]
+            )
 
             # Assign HMM regimes (based on RF training window)
             regimes = hmm_model.predict(rf_train[["norm_returns"]])
@@ -414,7 +416,7 @@ def run_backtest_STABLE(
             with open(rf_pickle_path, "wb") as f:
                 pickle.dump(rf, f)
 
-    # ----- Make predictions -----
+        # ----- Make predictions -----
         if t - num_lead < 0:
             continue
 
@@ -435,7 +437,6 @@ def run_backtest_STABLE(
         data_df.loc[data_df.index[t], "HMM Prob(R1)"] = p1
         data_df.loc[data_df.index[t], "Signal [RF]"] = s0
 
-
         z_t = z_spread.iloc[t]
 
         ema_signal = 0
@@ -449,8 +450,7 @@ def run_backtest_STABLE(
             < data_df.loc[data_df.index[t], "EMA_20"]
         ):
             ema_signal = -1
-            
-        
+
         if p0 > p1 and abs(p0 - p1) > thresh_prob:
             if s0 > 0.5 and ema_signal == 1:
                 data_df.loc[data_df.index[t], "signal"] = 1

@@ -6,6 +6,7 @@ import optuna
 
 from run_backtest import get_data, engineer_features_SPEC, run_backtest_STABLE
 
+
 # ------------------------------
 # Utility function
 # ------------------------------
@@ -19,13 +20,14 @@ def compute_strategy_returns(df):
     df.dropna(subset=["strategy_returns"], inplace=True)
     return df["strategy_returns"]
 
+
 # ------------------------------
 # Constants
 # ------------------------------
-TICKER = 'SPY'
-START_DATE = '1993-01-01'
-BACKTEST_SIGNAL_START_DATE = '2020-01-12'
-END_DATE = '2023-06-12'
+TICKER = "SPY"
+START_DATE = "1993-01-01"
+BACKTEST_SIGNAL_START_DATE = "2020-01-12"
+END_DATE = "2023-06-12"
 NUM_LEAD = 1
 
 # ------------------------------
@@ -33,6 +35,7 @@ NUM_LEAD = 1
 # ------------------------------
 raw_data = get_data(TICKER, START_DATE, END_DATE)
 data_with_features, feature_cols = engineer_features_SPEC(raw_data.copy(), NUM_LEAD)
+
 
 # ------------------------------
 # Optuna objective function
@@ -42,10 +45,10 @@ def objective(trial):
         # HMM parameters
         hmm_params = {
             "n_components": 2,
-            "covariance_type":   "full",
+            "covariance_type": "full",
             "n_iter": trial.suggest_int("hmm_n_iter", 200, 800),
             "tol": trial.suggest_float("hmm_tol", 1e-4, 1e-2, log=True),
-            "random_state": 42
+            "random_state": 42,
         }
 
         # Random Forest parameters
@@ -56,7 +59,7 @@ def objective(trial):
             "max_features": "sqrt",
             "bootstrap": True,
             "random_state": 42,
-            "n_jobs": -1
+            "n_jobs": -1,
         }
 
         params = {"hmm_params": hmm_params, "rf_params": rf_params}
@@ -64,7 +67,10 @@ def objective(trial):
         # Backtest-specific parameters
         hmm_n_past_years_data = trial.suggest_float("hmm_years", 2.0, 8.0)
         rf_n_past_months_data = trial.suggest_int("rf_months", 1, 12)
-        hmm_train_nth_week = trial.suggest_int("hmm_freq", 1, )
+        hmm_train_nth_week = trial.suggest_int(
+            "hmm_freq",
+            1,
+        )
         rf_train_nth_week = trial.suggest_int("rf_freq", 1, 4)
         thresh1 = trial.suggest_float("thresh1", 0.05, 0.5)
         thresh2 = trial.suggest_float("thresh2", 0.05, 0.75)
@@ -83,7 +89,7 @@ def objective(trial):
             thresh1=thresh1,
             thresh2=thresh2,
             hmm_lookback=hmm_lookback,
-            params=params
+            params=params,
         )
 
         # Compute strategy returns
@@ -110,7 +116,7 @@ def objective(trial):
         raise optuna.TrialPruned()
 
     # Objective: maximize risk-adjusted return
-    return cagr 
+    return cagr
 
 
 # ------------------------------
@@ -122,5 +128,3 @@ if __name__ == "__main__":
     study.optimize(objective, n_trials=100, n_jobs=-1)
 
     print("Best parameters:", study.best_params)
-
-   
