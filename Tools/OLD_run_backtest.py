@@ -4,6 +4,7 @@ from matplotlib import cm
 from matplotlib.dates import MonthLocator, YearLocator
 import pandas as pd
 import numpy as np
+from sklearn.discriminant_analysis import StandardScaler
 
 if not hasattr(np, "NINF"):
     np.NINF = -np.inf
@@ -14,6 +15,12 @@ from hmmlearn import hmm
 import pyfolio.timeseries as pf_ts
 import ta
 import warnings
+
+
+def normalize_data(df):
+    """Normalize the feature columns using StandardScaler."""
+
+    return df
 
 
 def get_data(ticker, ticker2, start_date, end_date):
@@ -323,9 +330,7 @@ def run_backtest_STABLE(
     rf_n_past_months_data,
     hmm_train_nth_week,
     rf_train_nth_week,
-    thresh_sig,
     thresh_prob,
-    hmm_lookback,
     params=None,
 ):
     os.makedirs("./ML_Models", exist_ok=True)
@@ -341,15 +346,11 @@ def run_backtest_STABLE(
     Y = int(rf_train_nth_week * 5)  # Y days = y weeks * 5
 
     data_df["signal"] = 0.0
-    data_df["returns_smooth"] = data_df["returns"].rolling(3, min_periods=1).mean()
-    data_df["vol_5"] = data_df["returns"].rolling(5).std()
-    data_df["vol_20"] = data_df["returns"].rolling(20).std()
-    data_df["noise_ratio"] = data_df["vol_5"] / data_df["vol_20"]
-    data_df["EMA_5"] = data_df["Close"].ewm(span=5, adjust=False).mean()
-    data_df["EMA_20"] = data_df["Close"].ewm(span=20, adjust=False).mean()
+    data_df["EMA_5"] = data_df["Close"].ewm(span=2, adjust=False).mean()
+    data_df["EMA_20"] = data_df["Close"].ewm(span=8, adjust=False).mean()
     log_spy = np.log(data_df["Close"])
     log_gld = np.log(data_df["Close2"])
-    window = 60
+    window = 120
     beta = log_spy.rolling(window).cov(log_gld) / log_gld.rolling(window).var()
     spread = log_spy - beta * log_gld
     spread_mean = spread.rolling(window).mean()
@@ -370,54 +371,60 @@ def run_backtest_STABLE(
 
     for t in range(start_idx, len(data_df)):
 
-        # Train HMM every X days
+    # ----- Train HMM every X days -----
         if (t - start_idx) % X == 0:
             hmm_start = max(0, t - hmm_window_days)
             hmm_train = data_df.iloc[hmm_start:t].copy()
-            hmm_train = hmm_train[["returns_smooth", "noise_ratio"]].dropna()
 
+            # Scale returns in HMM training window only
+            scaler_hmm = StandardScaler()
+            hmm_train["norm_returns"] = scaler_hmm.fit_transform(hmm_train[["returns"]])
+
+            hmm_train_nonan = hmm_train[["norm_returns"]].dropna()
             hmm_model = hmm.GaussianHMM(**hmm_params)
-            hmm_model.fit(hmm_train.values)
+            hmm_model.fit(hmm_train_nonan.values)
 
+            # Save HMM
             with open(hmm_pickle_path, "wb") as f:
                 pickle.dump(hmm_model, f)
 
-        # Train RFs every Y days
+        # ----- Train RF every Y days -----
         if (t - start_idx) % Y == 0:
-            rf_start = max(0, t - 600)
+            rf_start = max(0, t - 900)
             rf_train = data_df.iloc[rf_start:t].copy()
-            rf_train = rf_train.dropna(
-                subset=["returns_smooth"] + feature_list + ["y_signal"]
-            )
 
-            # assign regimes from current HMM
-            regimes = hmm_model.predict(rf_train[["returns_smooth", "noise_ratio"]])
+            # Scale returns only in RF window
+            scaler_rf = StandardScaler()
+            rf_train["norm_returns"] = scaler_rf.fit_transform(rf_train[["returns"]])
+
+            # Make sure we have y_signal and features
+            rf_train = rf_train.dropna(subset=["norm_returns"] + feature_list + ["y_signal"])
+
+            # Assign HMM regimes (based on RF training window)
+            regimes = hmm_model.predict(rf_train[["norm_returns"]])
             rf_train["regime"] = regimes
 
+            # Use only regime 0 for RF training
             df0 = rf_train[rf_train["regime"] == 0].tail(rf_window_days)
 
             rf = RandomForestClassifier(**rf_params)
-
             rf.fit(df0[feature_list], df0["y_signal"])
 
+            # Save RF
             with open(rf_pickle_path, "wb") as f:
                 pickle.dump(rf, f)
 
-        # Prediction for next day
+    # ----- Make predictions -----
         if t - num_lead < 0:
             continue
 
         feature_row = data_df.iloc[[t - num_lead]][feature_list].copy()
+        last_obs = np.array([[data_df["returns"].iloc[t - 1]]])
+        last_obs_norm = scaler_hmm.transform(last_obs)  # normalize same as HMM training
 
-        seq = (
-            data_df[["returns_smooth", "noise_ratio"]]
-            .iloc[max(0, t - hmm_lookback) : t]
-            .values
-        )
-
-        p0, p1 = hmm_model.predict_proba(seq)[-1]
-        p0 = max(0.01, min(p0, 0.99))
-        p1 = max(0.01, min(p1, 0.99))
+        p0, p1 = hmm_model.predict_proba(last_obs_norm)[0]
+        p0 = np.clip(p0, 0.1, 0.9)
+        p1 = np.clip(p1, 0.1, 0.9)
 
         try:
             s0 = rf.predict_proba(feature_row)[0][1]
@@ -427,6 +434,7 @@ def run_backtest_STABLE(
         data_df.loc[data_df.index[t], "HMM Prob(R0)"] = p0
         data_df.loc[data_df.index[t], "HMM Prob(R1)"] = p1
         data_df.loc[data_df.index[t], "Signal [RF]"] = s0
+
 
         z_t = z_spread.iloc[t]
 
@@ -441,16 +449,22 @@ def run_backtest_STABLE(
             < data_df.loc[data_df.index[t], "EMA_20"]
         ):
             ema_signal = -1
-
+            
+        
         if p0 > p1 and abs(p0 - p1) > thresh_prob:
-            if s0 > 0.5 + thresh_sig and ema_signal == 1:
+            if s0 > 0.5 and ema_signal == 1:
                 data_df.loc[data_df.index[t], "signal"] = 1
-            elif s0 < 0.5 - thresh_sig and ema_signal == -1:
+
+            elif s0 < 0.5 and ema_signal == -1:
                 data_df.loc[data_df.index[t], "signal"] = -1
+
+            elif z_t > 1:
+                data_df.loc[data_df.index[t], "signal"] = 2
+
             else:
                 data_df.loc[data_df.index[t], "signal"] = 0
 
-        elif p1 > p0 and abs(p0 - p1) > thresh_prob and z_t > 1:
+        elif p1 > p0 and abs(p0 - p1) > thresh_prob:
             data_df.loc[data_df.index[t], "signal"] = 2
 
         else:
@@ -475,8 +489,8 @@ if __name__ == "__main__":
     TICKER = "SPY"
     TICKER2 = "GLD"
     START_DATE = "1993-01-01"
-    BACKTEST_SIGNAL_START_DATE = "2020-01-25"
-    END_DATE = "2023-06-25"
+    BACKTEST_SIGNAL_START_DATE = "2025-06-12"
+    END_DATE = "2025-12-12"
     NUM_LEAD = 1
 
     raw_data = get_data(TICKER, TICKER2, START_DATE, END_DATE)
@@ -490,14 +504,14 @@ if __name__ == "__main__":
         "hmm_params": {
             "n_components": 2,  # number of hidden states
             "covariance_type": "full",  # allows correlated volatility; 'diag' = simpler, less flexible
-            "n_iter": 600,  # max training steps; higher = slower but more stable (200–600)
+            "n_iter": 591,  # max training steps; higher = slower but more stable (200–600)
             "tol": 0.00025461513333633457,  # convergence threshold; lower = more precise but slower (1e-2 to 1e-4)
             "random_state": 42,  # seed
         },
         # RF hyperparameters
         "rf_params": {
             "n_estimators": 300,  # number of trees; higher = smoother & less noise but slower (150–400)
-            "max_depth": 8  # tree depth; higher = more complex/overfits, lower = smoother/general (2–5)
+            "max_depth": 4  # tree depth; higher = more complex/overfits, lower = smoother/general (2–5)
             # ,"min_samples_leaf": 30   # minimum samples per leaf; higher = smoother/less noise (10–50)
             ,
             "max_features": "sqrt",  # features per split; lower = less correlated trees (usually 'sqrt')
@@ -516,9 +530,7 @@ if __name__ == "__main__":
         rf_n_past_months_data=10,
         hmm_train_nth_week=2,
         rf_train_nth_week=1,
-        thresh_sig=0.045,
-        thresh_prob=0.55,
-        hmm_lookback=5,
+        thresh_prob=0.75,
         params=params_opt,
     )
 
