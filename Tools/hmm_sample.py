@@ -103,7 +103,7 @@ def hmm_engineer_features(start_date, end_date):
     # VIX features
     df["VIX_1D_Change"] = df["vix_Close"].diff(1)
     df["VIX_5D_Change"] = df["vix_Close"].diff(5)
-    df["VIX_to_SPXRealVol"] = df["vix_Close"] / df["SPX_21D_RealVol"]
+    df["VIX_to_SPXRealVol"] = df["vix_Close"].shift(1) / df["SPX_21D_RealVol"].shift(1)
     df["VIX3M_VIX"] = df["vix3m_Close"] / df["vix_Close"]
     df["VIX6M_VIX"] = df["vix6m_Close"] / df["vix_Close"]
 
@@ -125,8 +125,10 @@ def hmm_engineer_features(start_date, end_date):
         "vix3m_Close",
         "vix6m_Close",
     }
-
+    
     feature_cols = [c for c in df.select_dtypes(np.number).columns if c not in exclude]
+    df[feature_cols] = df[feature_cols].shift(1)
+    df = df.dropna().reset_index(drop=True)
 
     # print(f"PCA components used: {n_components}")
 
@@ -175,11 +177,11 @@ while i < n:
     test_idx = df.index[i : min(i + retrain_hmm_every_n_days, n)]
 
     X_train_df = (
-        df.loc[train_idx, feature_cols].replace([np.inf, -np.inf], np.nan).dropna()
+        df.loc[train_idx, feature_cols].replace([np.inf, -np.inf], np.nan)
     )
 
     X_test_df = (
-        df.loc[test_idx, feature_cols].replace([np.inf, -np.inf], np.nan).dropna()
+        df.loc[test_idx, feature_cols].replace([np.inf, -np.inf], np.nan)
     )
 
     if len(X_train_df) < 200 or len(X_test_df) == 0:
